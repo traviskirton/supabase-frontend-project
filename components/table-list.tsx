@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { isSupabaseConfigured } from "@/lib/supabase-client"
 import TableData from "./table-data"
+import { getEnv } from "@/lib/env"
 
 export default function TableList() {
   const [tables, setTables] = useState<string[]>([])
@@ -9,8 +11,21 @@ export default function TableList() {
   const [error, setError] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
 
+  // Direct environment variable check
+  const directUrlCheck = getEnv("NEXT_PUBLIC_SUPABASE_URL")
+  const directKeyCheck = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+
   useEffect(() => {
     async function fetchTables() {
+      // Check if Supabase is configured before making the request
+      if (!isSupabaseConfigured()) {
+        setError(`Supabase is not configured. Please add the required environment variables.
+                 Direct URL check: ${directUrlCheck ? "Set" : "Not set"}
+                 Direct Key check: ${directKeyCheck ? "Set" : "Not set"}`)
+        setLoading(false)
+        return
+      }
+
       try {
         console.log("Fetching tables...")
         const response = await fetch("/api/tables")
@@ -42,7 +57,7 @@ export default function TableList() {
     }
 
     fetchTables()
-  }, [])
+  }, [directUrlCheck, directKeyCheck])
 
   if (loading) return <div>Loading tables...</div>
   if (error) return <div className="text-red-500">Error: {error}</div>

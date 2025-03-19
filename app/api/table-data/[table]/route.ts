@@ -1,8 +1,22 @@
-import { supabase } from "@/lib/supabase"
+import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 import { type NextRequest, NextResponse } from "next/server"
 
-export async function GET(request: NextRequest, { params }: { params: { table: string } }) {
-  const tableName = params.table
+interface RouteParams {
+  table: string
+}
+
+export async function GET(request: NextRequest, context: { params: RouteParams }) {
+  // Check if Supabase is configured
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      {
+        error: "Supabase is not configured. Please add the required environment variables.",
+      },
+      { status: 500 },
+    )
+  }
+
+  const tableName = context.params.table
 
   try {
     // Fetch data from the specified table

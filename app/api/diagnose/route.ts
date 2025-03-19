@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getSupabaseConfig } from "@/lib/supabase"
 
 export async function GET() {
   try {
@@ -38,6 +39,7 @@ export async function GET() {
           runtime: process.version,
           nodeEnv: process.env.NODE_ENV,
           region: process.env.VERCEL_REGION || "unknown",
+          vercelEnv: process.env.VERCEL_ENV || "unknown",
         },
         supabase: {
           url: supabaseUrl ? `${supabaseUrl.substring(0, 15)}...` : "Not set",
@@ -46,6 +48,7 @@ export async function GET() {
           keyPresent: !!supabaseAnonKey,
           restApiStatus,
           restApiResponse,
+          config: getSupabaseConfig(),
         },
       },
     })

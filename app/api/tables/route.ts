@@ -47,25 +47,14 @@ export async function GET() {
       }
     }
 
-    // If both RPC methods fail, fall back to querying information_schema directly
-    console.log("Falling back to information_schema query...")
+    // If both RPC methods fail, return a response indicating to try the list-tables endpoint
+    console.log("RPC methods failed, suggesting list-tables endpoint...")
 
-    const client = isSupabaseAdminConfigured() ? supabaseAdmin : supabase
-    const { data: fallbackData, error: fallbackError } = await client
-      .from("information_schema.tables")
-      .select("table_name")
-      .eq("table_schema", "public")
-      .eq("table_type", "BASE TABLE")
-
-    if (fallbackError) {
-      console.error("Fallback query error:", fallbackError)
-      return NextResponse.json({ error: fallbackError.message }, { status: 500 })
-    }
-
-    // Transform the data to match the expected format
-    const tables = fallbackData.map((item) => item.table_name)
-    console.log("Tables fetched successfully via fallback method")
-    return NextResponse.json({ tables })
+    return NextResponse.json({
+      useFallback: true,
+      fallbackEndpoint: "/api/list-tables",
+      message: "RPC methods failed, try using the list-tables endpoint",
+    })
   } catch (error: any) {
     console.error("Error fetching tables:", error)
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })

@@ -19,47 +19,6 @@ export async function GET(request: NextRequest, context: { params: RouteParams }
   const tableName = context.params.table
 
   try {
-    console.log(`Attempting to fetch schema for table: ${tableName}`)
-
-    // First try using the RPC function with the regular client
-    try {
-      console.log("Trying RPC with anon key...")
-      const { data: rpcData, error: rpcError } = await supabase.rpc("get_table_schema", {
-        p_table_name: tableName,
-      })
-
-      if (!rpcError && rpcData) {
-        console.log("Schema fetched successfully via RPC")
-        return NextResponse.json({ schema: rpcData })
-      }
-
-      console.log("RPC with anon key failed:", rpcError?.message)
-    } catch (rpcErr) {
-      console.log("RPC call exception:", rpcErr)
-    }
-
-    // If that fails and we have a service role key, try with the admin client
-    if (isSupabaseAdminConfigured()) {
-      try {
-        console.log("Trying RPC with service role key...")
-        const { data: adminRpcData, error: adminRpcError } = await supabaseAdmin.rpc("get_table_schema", {
-          p_table_name: tableName,
-        })
-
-        if (!adminRpcError && adminRpcData) {
-          console.log("Schema fetched successfully via admin RPC")
-          return NextResponse.json({ schema: adminRpcData })
-        }
-
-        console.log("RPC with service role key failed:", adminRpcError?.message)
-      } catch (adminRpcErr) {
-        console.log("Admin RPC call exception:", adminRpcErr)
-      }
-    }
-
-    // If both RPC methods fail, fall back to a direct query
-    console.log("Falling back to direct query...")
-
     // Use the admin client if available, otherwise use the regular client
     const client = isSupabaseAdminConfigured() ? supabaseAdmin : supabase
 
@@ -120,7 +79,7 @@ export async function GET(request: NextRequest, context: { params: RouteParams }
       return NextResponse.json({ schema })
     }
   } catch (error: any) {
-    console.error(`Error in schema route:`, error)
+    console.error(`Error in simple schema route:`, error)
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })
   }
 }

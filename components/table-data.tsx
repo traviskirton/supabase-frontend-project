@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 
 interface TableDataProps {
@@ -41,27 +40,47 @@ export default function TableData({ tableName }: TableDataProps) {
           return
         }
 
-        // Fetch table schema
-        const schemaResponse = await fetch(`/api/schema/${tableName}`)
+        // Try the schema endpoints in order of preference
+        const schemaEndpoints = [
+          `/api/schema/${tableName}`, // RPC function
+          `/api/simple-schema/${tableName}`, // Simple query
+        ]
 
-        if (!schemaResponse.ok) {
-          const errorText = await schemaResponse.text()
-          console.error("Schema response error:", errorText)
-          setError(`Failed to fetch schema: ${schemaResponse.status}`)
-          setLoading(false)
-          return
+        let schemaResult = null
+        let lastSchemaError = null
+
+        for (const endpoint of schemaEndpoints) {
+          try {
+            console.log(`Trying schema endpoint: ${endpoint}...`)
+            const response = await fetch(endpoint)
+
+            if (response.ok) {
+              const result = await response.json()
+              if (!result.error) {
+                schemaResult = result
+                break
+              }
+              lastSchemaError = result.error
+            } else {
+              const text = await response.text()
+              console.error(`Error from ${endpoint}:`, text)
+              lastSchemaError = `API error: ${response.status}`
+            }
+          } catch (err) {
+            console.error(`Fetch error for ${endpoint}:`, err)
+            lastSchemaError = "Failed to fetch schema"
+          }
         }
 
-        const schemaResult = await schemaResponse.json()
-
-        if (schemaResult.error) {
-          setError(schemaResult.error)
-          setLoading(false)
-          return
+        if (!schemaResult) {
+          console.error("All schema endpoints failed:", lastSchemaError)
+          // Continue with data only
         }
 
         setData(dataResult.data || [])
-        setSchema(schemaResult.schema || [])
+        if (schemaResult) {
+          setSchema(schemaResult.schema || [])
+        }
       } catch (err) {
         console.error("Error fetching table data:", err)
         setError("Failed to fetch table data")

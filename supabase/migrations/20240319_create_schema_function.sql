@@ -1,5 +1,9 @@
--- This function returns the schema information for a given table
-CREATE OR REPLACE FUNCTION get_table_schema(table_name text)
+-- Drop existing functions if they exist
+DROP FUNCTION IF EXISTS get_table_schema(text);
+DROP FUNCTION IF EXISTS get_tables();
+
+-- Create function to get table schema
+CREATE OR REPLACE FUNCTION get_table_schema(p_table_name text)
 RETURNS TABLE (
   column_name text,
   data_type text,
@@ -17,7 +21,19 @@ BEGIN
     information_schema.columns c
   WHERE 
     c.table_schema = 'public' 
-    AND c.table_name = table_name;
+    AND c.table_name = p_table_name;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create function to get all tables
+CREATE OR REPLACE FUNCTION get_tables()
+RETURNS TABLE (tablename text) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT table_name::text
+  FROM information_schema.tables
+  WHERE table_schema = 'public'
+  AND table_type = 'BASE TABLE';
 END;
 $$ LANGUAGE plpgsql;
 

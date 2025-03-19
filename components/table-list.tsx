@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import TableData from './table-data'
+import { useState, useEffect } from "react"
+import TableData from "./table-data"
 
 export default function TableList() {
   const [tables, setTables] = useState<string[]>([])
@@ -12,17 +12,30 @@ export default function TableList() {
   useEffect(() => {
     async function fetchTables() {
       try {
-        const response = await fetch('/api/tables')
+        console.log("Fetching tables...")
+        const response = await fetch("/api/tables")
+        console.log("Response status:", response.status)
+
+        // Check if response is OK before parsing JSON
+        if (!response.ok) {
+          const text = await response.text()
+          console.error("Error response:", text)
+          setError(`API error: ${response.status}`)
+          setLoading(false)
+          return
+        }
+
         const data = await response.json()
-        
+        console.log("Tables data:", data)
+
         if (data.error) {
           setError(data.error)
         } else {
           setTables(data.tables || [])
         }
       } catch (err) {
-        setError('Failed to fetch tables')
-        console.error(err)
+        console.error("Fetch error:", err)
+        setError("Failed to fetch tables")
       } finally {
         setLoading(false)
       }
@@ -40,14 +53,12 @@ export default function TableList() {
       <div className="md:col-span-1 bg-gray-50 p-4 rounded-lg">
         <h2 className="text-xl font-semibold mb-4">Tables</h2>
         <ul className="space-y-2">
-          {tables.map(table => (
+          {tables.map((table) => (
             <li key={table}>
               <button
                 onClick={() => setSelectedTable(table)}
                 className={`w-full text-left px-3 py-2 rounded ${
-                  selectedTable === table 
-                    ? 'bg-blue-500 text-white' 
-                    : 'hover:bg-gray-200'
+                  selectedTable === table ? "bg-blue-500 text-white" : "hover:bg-gray-200"
                 }`}
               >
                 {table}
@@ -56,7 +67,7 @@ export default function TableList() {
           ))}
         </ul>
       </div>
-      
+
       <div className="md:col-span-3">
         {selectedTable ? (
           <TableData tableName={selectedTable} />
@@ -69,3 +80,4 @@ export default function TableList() {
     </div>
   )
 }
+

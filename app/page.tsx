@@ -1,10 +1,9 @@
-import TableList from '@/components/table-list'
-
 export default function Home() {
   return (
-    <main className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">Supabase Data Explorer</h1>
-      <TableList />
-    </main>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Simple Test Page</h1>
+      <p>This is a simple test page to verify deployment works correctly.</p>
+    </div>
   )
 }
+

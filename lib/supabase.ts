@@ -5,21 +5,21 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Create a client with the anon key (for client-side use)
-export const supabase = createClient(
-  supabaseUrl || "https://placeholder.supabase.co",
-  supabaseAnonKey || "placeholder-key",
-)
-
 // Create a client with the service role key (for server-side admin operations)
 export const supabaseAdmin = createClient(
   supabaseUrl || "https://placeholder.supabase.co",
   supabaseServiceKey || "placeholder-key",
 )
 
+// Create a client with the anon key (for client-side use)
+export const supabase = createClient(
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-key",
+)
+
 // Export a function to check if Supabase is properly configured
 export function isSupabaseConfigured() {
-  return !!supabaseUrl && !!supabaseAnonKey
+  return !!supabaseUrl && (!!supabaseAnonKey || !!supabaseServiceKey)
 }
 
 // Export a function to check if the admin client is configured

@@ -6,7 +6,7 @@ import { isSupabaseAdminConfigured } from "@/lib/supabase"
 export default function SqlHelper() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [result, setResult] = useState<string | null>(null)
-  const [sqlType, setSqlType] = useState<"functions" | "list-tables">("functions")
+  const [sqlType, setSqlType] = useState<"functions" | "list-tables" | "query-function">("functions")
   const adminConfigured = isSupabaseAdminConfigured()
 
   async function showInstructions() {
@@ -89,6 +89,36 @@ ORDER BY table_name;
 5. Click "Run" to execute the SQL
 6. You should see a list of all tables in your database
         `)
+      } else if (sqlType === "query-function") {
+        setResult(`
+To create a function that allows executing arbitrary SQL queries, follow these steps:
+
+1. Log in to your Supabase dashboard
+2. Go to the SQL Editor
+3. Create a new query
+4. Copy and paste the following SQL:
+
+-- Create a function to execute arbitrary SQL queries
+CREATE OR REPLACE FUNCTION pgclient_query(query text)
+RETURNS JSONB AS $$
+DECLARE
+  result JSONB;
+BEGIN
+  EXECUTE query INTO result;
+  RETURN result;
+EXCEPTION WHEN OTHERS THEN
+  RAISE EXCEPTION 'Error executing query: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION pgclient_query(text) TO anon, authenticated;
+
+5. Click "Run" to execute the SQL
+6. This function will allow the application to query table information directly
+
+Note: This function has elevated privileges. Use with caution in production environments.
+        `)
       }
     }, 500)
   }
@@ -100,7 +130,7 @@ ORDER BY table_name;
 
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">Select SQL Type:</label>
-        <div className="flex space-x-4">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setSqlType("functions")}
             className={`px-4 py-2 rounded-md ${
@@ -117,6 +147,14 @@ ORDER BY table_name;
           >
             List All Tables
           </button>
+          <button
+            onClick={() => setSqlType("query-function")}
+            className={`px-4 py-2 rounded-md ${
+              sqlType === "query-function" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            Create Query Function
+          </button>
         </div>
       </div>
 
@@ -127,7 +165,9 @@ ORDER BY table_name;
       >
         {status === "loading"
           ? "Loading Instructions..."
-          : `Show ${sqlType === "functions" ? "SQL Function" : "List Tables"} Instructions`}
+          : `Show ${
+              sqlType === "functions" ? "SQL Function" : sqlType === "list-tables" ? "List Tables" : "Query Function"
+            } Instructions`}
       </button>
 
       {result && (
@@ -137,10 +177,11 @@ ORDER BY table_name;
       )}
 
       <div className="mt-4 bg-gray-50 p-4 rounded">
-        <h3 className="font-semibold mb-2">SQL Functions Required:</h3>
+        <h3 className="font-semibold mb-2">Required SQL Functions:</h3>
         <ul className="list-disc pl-6">
           <li>
-            <code className="bg-gray-100 px-2 py-1 rounded">get_tables()</code> - Returns a list of all tables
+            <code className="bg-gray-100 px-2 py-1 rounded">pgclient_query(text)</code> - Executes arbitrary SQL queries
+            (needed for table listing)
           </li>
           <li>
             <code className="bg-gray-100 px-2 py-1 rounded">get_table_schema(text)</code> - Returns schema information

@@ -2,10 +2,16 @@ import Link from "next/link"
 import ManualCredentials from "@/components/manual-credentials"
 import EnvChecker from "@/components/env-checker"
 import SqlHelper from "@/components/sql-helper"
+import CreateTablesFunction from "@/components/create-tables-function"
+import ManualTableCheck from "@/components/manual-table-check"
+import TableInfo from "@/components/table-info"
 
 export default function DebugPage() {
   return (
     <div className="p-8">
+      <div className="mb-8">
+        <TableInfo />
+      </div>
       <h1 className="text-2xl font-bold mb-6">Supabase Connection Diagnostics</h1>
 
       <div className="mb-6">
@@ -22,10 +28,18 @@ export default function DebugPage() {
             Add the <code className="bg-blue-100 px-2 py-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> for full
             functionality
           </li>
-          <li>Create the SQL functions using the tool below</li>
+          <li>Create the SQL function for table listing using the tool below</li>
           <li>Create some tables in your Supabase database if none exist</li>
           <li>Return to the main page to view your tables</li>
         </ol>
+      </div>
+
+      <div className="mb-8">
+        <ManualTableCheck />
+      </div>
+
+      <div className="mb-8">
+        <CreateTablesFunction />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -47,11 +61,11 @@ export default function DebugPage() {
               Test Supabase Connection
             </Link>
             <Link
-              href="/api/list-tables"
+              href="/api/direct-sql-tables"
               className="block p-4 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100"
               target="_blank"
             >
-              List Available Tables
+              List Available Tables (Direct)
             </Link>
           </div>
         </div>
@@ -109,45 +123,6 @@ INSERT INTO todos (title, completed) VALUES
             </Link>{" "}
             to view them.
           </p>
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Common Issues & Solutions</h2>
-
-        <div className="space-y-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="font-semibold text-lg mb-2">Missing SQL Functions</h3>
-            <p className="mb-2">
-              If you see errors about missing functions like{" "}
-              <code className="bg-gray-100 px-2 py-1 rounded">get_tables</code>, you need to create these functions in
-              your Supabase database.
-            </p>
-            <p>Use the SQL Helper tool above to get the SQL code needed to create these functions.</p>
-          </div>
-
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="font-semibold text-lg mb-2">No Tables Found</h3>
-            <p className="mb-2">If no tables are found, you need to create some tables in your Supabase database.</p>
-            <p>You can create tables using the Supabase dashboard Table Editor or by running SQL commands.</p>
-          </div>
-
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="font-semibold text-lg mb-2">Permission Errors</h3>
-            <p className="mb-2">
-              If you see permission errors, make sure you've added the{" "}
-              <code className="bg-gray-100 px-2 py-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> environment variable.
-            </p>
-            <p>The service role key has admin privileges and can access database metadata that the anon key cannot.</p>
-          </div>
-
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="font-semibold text-lg mb-2">Connection Errors</h3>
-            <p className="mb-2">
-              If you see connection errors, check that your Supabase project is active and not in maintenance mode.
-            </p>
-            <p>Also ensure that your Supabase URL and keys are correctly set in your environment variables.</p>
-          </div>
         </div>
       </div>
     </div>

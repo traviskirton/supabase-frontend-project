@@ -11,6 +11,17 @@ export default function Home() {
     <main className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-6">Supabase Data Explorer</h1>
 
+      <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+        <h2 className="text-lg font-semibold text-blue-800 mb-2">About This Explorer</h2>
+        <p className="text-blue-700 mb-2">
+          This tool connects to your Supabase database and shows you the tables that exist in your database.
+        </p>
+        <p className="text-blue-700">
+          It uses the Supabase REST API to directly list available tables, ensuring you only see tables that actually
+          exist.
+        </p>
+      </div>
+
       {!supabaseConfigured ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-6 mb-6">
           <h2 className="text-xl font-semibold text-red-600 mb-2">Missing Supabase Configuration</h2>
@@ -26,6 +37,10 @@ export default function Home() {
             <li>
               <code className="bg-gray-100 px-2 py-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> - Your Supabase
               anonymous key
+            </li>
+            <li className="font-semibold">
+              <code className="bg-gray-100 px-2 py-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> - Your Supabase service
+              role key (recommended for full functionality)
             </li>
           </ul>
           <p className="mb-4">You can find these values in your Supabase dashboard under Project Settings &gt; API.</p>
@@ -57,7 +72,7 @@ export default function Home() {
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
               <h2 className="text-lg font-semibold text-yellow-700 mb-2">Service Role Key Not Configured</h2>
               <p className="mb-2">
-                For full functionality, consider adding the Supabase Service Role Key as an environment variable:
+                For full functionality, add the Supabase Service Role Key as an environment variable:
               </p>
               <ul className="list-disc pl-6 mb-2">
                 <li>

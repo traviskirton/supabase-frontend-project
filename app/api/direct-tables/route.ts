@@ -16,111 +16,110 @@ export async function GET() {
     // Use the admin client if available, otherwise use the regular client
     const client = isSupabaseAdminConfigured() ? supabaseAdmin : supabase
 
-    // Try multiple SQL queries to get tables
-    const queries = [
-      // Query 1: Standard PostgreSQL catalog query
-      `SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public' ORDER BY tablename;`,
-
-      // Query 2: Information schema query
-      `SELECT table_name as tablename FROM information_schema.tables 
-       WHERE table_schema = 'public' AND table_type = 'BASE TABLE' 
-       ORDER BY table_name;`,
-
-      // Query 3: Alternative using pg_class
-      `SELECT relname as tablename FROM pg_class 
-       WHERE relkind = 'r' AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public') 
-       ORDER BY relname;`,
+    // Try to get a list of tables by querying each potential table
+    const commonTables = [
+      "users",
+      "profiles",
+      "auth",
+      "todos",
+      "items",
+      "products",
+      "orders",
+      "posts",
+      "comments",
+      "categories",
+      "tags",
+      "settings",
+      "customers",
+      "employees",
+      "projects",
+      "tasks",
+      "events",
+      "messages",
+      "notifications",
+      "subscriptions",
+      "payments",
+      "invoices",
+      "addresses",
+      "contacts",
+      "files",
+      "images",
+      "videos",
+      "documents",
+      "notes",
+      // Add more potential table names here
+      "accounts",
+      "sessions",
+      "transactions",
+      "logs",
+      "analytics",
+      "metrics",
+      "feedback",
+      "reviews",
+      "ratings",
+      "favorites",
+      "bookmarks",
+      "likes",
+      "followers",
+      "friends",
+      "groups",
+      "teams",
+      "roles",
+      "permissions",
+      "configurations",
+      "preferences",
+      "options",
+      "stats",
+      "data",
+      "records",
+      "entries",
+      "articles",
+      "blogs",
+      "pages",
+      "sections",
+      "chapters",
+      "books",
+      "authors",
+      "publishers",
+      "editors",
+      "contributors",
+      "members",
+      "subscribers",
+      "visitors",
+      "guests",
+      "admins",
+      "moderators",
+      "staff",
     ]
 
-    let tables = []
-    let queryUsed = ""
+    const existingTables = []
 
-    // Try each query until one works
-    for (const query of queries) {
+    // Check each table to see if it exists
+    for (const tableName of commonTables) {
       try {
-        console.log("Trying SQL query:", query)
-        const { data, error } = await client.rpc("pgclient_query", { query })
+        const { error } = await client.from(tableName).select("count").limit(1)
 
-        if (!error && data && data.length > 0) {
-          console.log("Query successful, found tables:", data)
-          tables = data.map((row: any) => row.tablename)
-          queryUsed = query
-          break
-        } else if (error) {
-          console.error("SQL query error:", error)
+        // If no error, the table exists
+        if (!error) {
+          existingTables.push(tableName)
         }
-      } catch (queryError) {
-        console.error("Error executing query:", queryError)
-      }
-    }
-
-    // If no tables found with RPC, try a different approach
-    if (tables.length === 0) {
-      console.log("Trying alternative approach to find tables...")
-
-      // Try to query a few system tables to see what's accessible
-      try {
-        const { data: pgStatActivity } = await client.from("pg_stat_activity").select("count").limit(1)
-        if (pgStatActivity) {
-          console.log("Can access pg_stat_activity")
-        }
-      } catch (e) {
-        console.log("Cannot access pg_stat_activity")
-      }
-
-      // Try to list all schemas
-      try {
-        const { data: schemas } = await client.rpc("pgclient_query", {
-          query: `SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname != 'information_schema';`,
-        })
-        if (schemas) {
-          console.log("Available schemas:", schemas)
-        }
-      } catch (e) {
-        console.log("Cannot list schemas")
-      }
-
-      // Try to create a temporary function to list tables
-      try {
-        const createFunctionQuery = `
-          CREATE OR REPLACE FUNCTION temp_list_tables() 
-          RETURNS TABLE (tablename text) AS $$
-          BEGIN
-            RETURN QUERY SELECT table_name::text FROM information_schema.tables 
-            WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
-          END;
-          $$ LANGUAGE plpgsql;
-        `
-
-        const { error: createError } = await client.rpc("pgclient_query", { query: createFunctionQuery })
-
-        if (!createError) {
-          const { data: funcResult } = await client.rpc("temp_list_tables")
-          if (funcResult) {
-            tables = funcResult
-            console.log("Found tables using temporary function:", tables)
-          }
-        }
-      } catch (funcError) {
-        console.error("Error with temporary function:", funcError)
+      } catch (err) {
+        // Ignore errors for tables that don't exist
+        continue
       }
     }
 
     return NextResponse.json({
-      tables,
-      queryUsed: queryUsed || "Alternative methods",
+      tables: existingTables,
+      method: "common_tables_check",
       note:
-        tables.length === 0
+        existingTables.length === 0
           ? "No tables found. You may need to create tables in your database."
-          : `Found ${tables.length} tables in your database.`,
+          : `Found ${existingTables.length} tables by checking common table names.`,
     })
   } catch (error: any) {
-    console.error("Error with direct SQL query:", error)
-    return NextResponse.json({
-      tables: [],
-      error: error.message,
-      note: "Could not query tables directly. Try creating some tables in your database.",
-    })
+    console.error("Error listing tables:", error)
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })
   }
 }
 

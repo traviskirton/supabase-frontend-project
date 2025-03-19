@@ -1,63 +1,87 @@
-import { supabase, supabaseAdmin, isSupabaseConfigured, isSupabaseAdminConfigured } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export async function GET() {
-  // Check if Supabase is configured
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json(
-      {
-        error: "Supabase is not configured. Please add the required environment variables.",
-      },
-      { status: 500 },
-    )
-  }
-
   try {
-    console.log("Attempting to fetch tables...")
+    // Get Supabase credentials
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    // First try using the RPC function with the regular client
-    try {
-      console.log("Trying RPC with anon key...")
-      const { data: rpcData, error: rpcError } = await supabase.rpc("get_tables")
-
-      if (!rpcError && rpcData) {
-        console.log("Tables fetched successfully via RPC")
-        return NextResponse.json({ tables: rpcData })
-      }
-
-      console.log("RPC with anon key failed:", rpcError?.message)
-    } catch (rpcErr) {
-      console.log("RPC call exception:", rpcErr)
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        {
+          error: "Missing Supabase credentials",
+          tables: [],
+        },
+        { status: 500 },
+      )
     }
 
-    // If that fails and we have a service role key, try with the admin client
-    if (isSupabaseAdminConfigured()) {
-      try {
-        console.log("Trying RPC with service role key...")
-        const { data: adminRpcData, error: adminRpcError } = await supabaseAdmin.rpc("get_tables")
+    // Make a direct SQL query to PostgreSQL to get all tables
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_actual_tables`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({}),
+    })
 
-        if (!adminRpcError && adminRpcData) {
-          console.log("Tables fetched successfully via admin RPC")
-          return NextResponse.json({ tables: adminRpcData })
-        }
+    if (!response.ok) {
+      // If the RPC function doesn't exist, we'll get an error
+      console.error("RPC function not found, trying direct REST API")
 
-        console.log("RPC with service role key failed:", adminRpcError?.message)
-      } catch (adminRpcErr) {
-        console.log("Admin RPC call exception:", adminRpcErr)
+      // Try the REST API approach
+      const restResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      })
+
+      if (restResponse.ok) {
+        const data = await restResponse.json()
+        // The response contains the available tables as keys
+        const tables = Object.keys(data).filter(
+          (table) =>
+            // Filter out system tables
+            !table.startsWith("pg_") && !table.startsWith("_") && table !== "schema" && !table.includes("auth"),
+        )
+
+        return NextResponse.json({
+          tables,
+          method: "rest_api",
+          note: `Found ${tables.length} tables using REST API.`,
+        })
       }
+
+      // If both approaches fail, return detailed error
+      const errorText = await response.text()
+      return NextResponse.json(
+        {
+          error: `Failed to get tables: ${response.status} - ${errorText}`,
+          tables: [],
+        },
+        { status: 500 },
+      )
     }
 
-    // If both RPC methods fail, return a response indicating to try the list-tables endpoint
-    console.log("RPC methods failed, suggesting list-tables endpoint...")
+    const data = await response.json()
 
     return NextResponse.json({
-      useFallback: true,
-      fallbackEndpoint: "/api/list-tables",
-      message: "RPC methods failed, try using the list-tables endpoint",
+      tables: data,
+      method: "rpc_function",
+      note: `Found ${data.length} tables using SQL query.`,
     })
   } catch (error: any) {
     console.error("Error fetching tables:", error)
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: error.message,
+        tables: [],
+      },
+      { status: 500 },
+    )
   }
 }
 

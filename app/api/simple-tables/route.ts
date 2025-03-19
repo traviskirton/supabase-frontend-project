@@ -1,73 +1,92 @@
-import { supabase, supabaseAdmin, isSupabaseConfigured, isSupabaseAdminConfigured } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export async function GET() {
-  // Check if Supabase is configured
-  if (!isSupabaseConfigured()) {
+  try {
+    // Get Supabase credentials
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Missing Supabase credentials",
+          details: {
+            urlDefined: !!supabaseUrl,
+            keyDefined: !!supabaseKey,
+          },
+        },
+        { status: 500 },
+      )
+    }
+
+    console.log(`Simple Tables API: Fetching from ${supabaseUrl} ...`)
+
+    // Make a direct request to the Supabase REST API
+    const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`API error (${response.status}):`, errorText)
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Supabase API error: ${response.status}`,
+          details: errorText,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 },
+      )
+    }
+
+    const data = await response.json()
+
+    // The response contains the available tables as keys
+    const tables = Object.keys(data)
+      .filter(
+        (table) =>
+          // Filter out system tables and metadata
+          !table.startsWith("pg_") &&
+          !table.startsWith("_") &&
+          !table.startsWith("auth_") &&
+          !table.startsWith("supabase_") &&
+          !table.startsWith("storage_") &&
+          table !== "schema" &&
+          table !== "extensions" &&
+          table !== "buckets" &&
+          table !== "objects" &&
+          table !== "policies",
+      )
+      .sort()
+
+    console.log(`Simple Tables API: Found ${tables.length} tables`)
+
+    return NextResponse.json({
+      success: true,
+      tables,
+      count: tables.length,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error: any) {
+    console.error("Simple Tables API error:", error)
+
     return NextResponse.json(
       {
-        error: "Supabase is not configured. Please add the required environment variables.",
+        success: false,
+        error: error?.message || "Unknown error occurred",
+        stack: process.env.NODE_ENV === "development" ? error?.stack : undefined,
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )
-  }
-
-  try {
-    // Use the admin client if available, otherwise use the regular client
-    const client = isSupabaseAdminConfigured() ? supabaseAdmin : supabase
-
-    // Try to get a list of tables by creating and querying a temporary table
-    try {
-      // First check if the temp table already exists
-      const { error: checkError } = await client.from("temp_tables_check").select("id").limit(1)
-
-      // If the table doesn't exist, create it
-      if (checkError && checkError.message.includes("does not exist")) {
-        const { error: createError } = await client.from("temp_tables_check").insert([{ id: 1 }])
-
-        if (createError) {
-          console.error("Failed to create temporary table:", createError)
-          return NextResponse.json(
-            {
-              error: "Failed to create temporary table",
-              details: createError.message,
-            },
-            { status: 500 },
-          )
-        }
-      }
-
-      // Query the temporary table to get metadata about all tables
-      const { data, error } = await client.from("temp_tables_check").select()
-
-      if (error) {
-        console.error("Failed to query temporary table:", error)
-        return NextResponse.json(
-          {
-            error: "Failed to query temporary table",
-            details: error.message,
-          },
-          { status: 500 },
-        )
-      }
-
-      // Extract table names from the response
-      // The response will include all column names, which correspond to table names
-      const tables = Object.keys(data[0] || {}).filter((name) => name !== "id")
-
-      return NextResponse.json({ tables })
-    } catch (error: any) {
-      console.error("Error with temporary table approach:", error)
-
-      // Fallback to a list of common table names
-      return NextResponse.json({
-        tables: ["users", "profiles", "auth", "todos", "items", "products", "orders", "posts", "comments"],
-        note: "Using fallback list of common table names. Some may not exist in your database.",
-      })
-    }
-  } catch (error: any) {
-    console.error("Error fetching tables:", error)
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })
   }
 }
 

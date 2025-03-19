@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import { isSupabaseAdminConfigured } from "@/lib/supabase"
 
 interface TableDataProps {
   tableName: string
@@ -12,6 +13,7 @@ export default function TableData({ tableName }: TableDataProps) {
   const [schema, setSchema] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const adminConfigured = isSupabaseAdminConfigured()
 
   useEffect(() => {
     async function fetchData() {
@@ -95,7 +97,18 @@ export default function TableData({ tableName }: TableDataProps) {
   }, [tableName])
 
   if (loading) return <div className="p-4">Loading data...</div>
-  if (error) return <div className="p-4 text-red-500">Error: {error}</div>
+  if (error)
+    return (
+      <div className="p-4">
+        <div className="text-red-500 mb-4">Error: {error}</div>
+        {!adminConfigured && (
+          <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-sm">
+            For better data access, add the{" "}
+            <code className="bg-yellow-100 px-1 py-0.5 rounded">SUPABASE_SERVICE_ROLE_KEY</code> environment variable.
+          </div>
+        )}
+      </div>
+    )
   if (data.length === 0) return <div className="p-4">No data found in this table.</div>
 
   // Get column names from the first data item or schema
